@@ -1,4 +1,5 @@
 __pycache__/
 *.pyc
 *.xls
-!resultado_folgas.xls
+dados/
+debug_*.py
