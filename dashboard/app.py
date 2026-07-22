@@ -173,6 +173,16 @@ def exportar_excel():
     return Response(si.getvalue(), mimetype='text/csv',
         headers={'Content-Disposition': 'attachment; filename=dashboard_folgas.csv'})
 
+@app.route('/api/sair')
+def api_sair():
+    func = request.environ.get('werkzeug.server.shutdown')
+    if func:
+        func()
+    else:
+        import os, signal
+        os.kill(os.getpid(), signal.SIGINT)
+    return 'Encerrando...'
+
 if __name__ == '__main__':
     def abrir_navegador():
         webbrowser.open_new("http://127.0.0.1:5000")

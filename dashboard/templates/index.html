@@ -172,6 +172,7 @@ tbody td .badge {
     <span class="spacer"></span>
     <button class="btn-export btn-export-excel" onclick="exportarExcel()">Exportar Excel</button>
     <button class="btn-export btn-export-pdf" onclick="exportarPDF()">Exportar PDF</button>
+    <button class="btn-export" style="background:var(--red);border-color:var(--red);color:#fff" onclick="sair()">Sair</button>
   </div>
 
   <div class="charts">
@@ -509,6 +510,14 @@ function exportarPDF() {
 
 carregarResumo('');
 carregarFuncionarios('');
+
+function sair() {
+  if (confirm('Encerrar o dashboard?')) {
+    fetch('/api/sair').then(() => {
+      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:12px;color:#8892a4;font-family:sans-serif"><div style="font-size:40px">👋</div><div style="font-size:18px">Dashboard encerrado.</div><div style="font-size:13px">Feche esta aba.</div></div>';
+    });
+  }
+}
 </script>
 </body>
 </html>
