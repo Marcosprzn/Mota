@@ -199,14 +199,14 @@ tbody td .badge {
             <th onclick="ordenar('nome')" data-key="nome">Nome</th>
             <th onclick="ordenar('engenho')" data-key="engenho">Engenho</th>
             <th onclick="ordenar('turma')" data-key="turma">Turma</th>
-            <th onclick="ordenar('media')" data-key="media" class="num">Média</th>
+            <th onclick="ordenar('media')" data-key="media" class="num">Vl.Repouso</th>
             <th onclick="ordenar('folgas')" data-key="folgas" class="num">Folgas</th>
             <th onclick="ordenar('faltas')" data-key="faltas" class="num">Faltas</th>
             <th onclick="ordenar('perder')" data-key="perder" class="num">Perder</th>
             <th onclick="ordenar('garantidos')" data-key="garantidos" class="num">Garant.</th>
             <th onclick="ordenar('tipo')" data-key="tipo">Tipo</th>
             <th onclick="ordenar('producao')" data-key="producao" class="num">Produção</th>
-            <th onclick="ordenar('valor_folgas')" data-key="valor_folgas" class="num">V.Folgas</th>
+            <th onclick="ordenar('valor_folgas')" data-key="valor_folgas" class="num">Vl.Total Repouso</th>
             <th onclick="ordenar('total')" data-key="total" class="num">Total</th>
           </tr>
         </thead>
@@ -469,7 +469,7 @@ function exportarPDF() {
   tab.innerHTML = '<thead><tr>' +
     '<th>ID</th><th>Nome</th><th>Engenho</th><th>Turma</th><th class="num">M\u00e9dia</th>' +
     '<th class="num">Folgas</th><th class="num">Faltas</th><th class="num">Perder</th><th class="num">Garant.</th>' +
-    '<th>Tipo</th><th class="num">Produ\u00e7\u00e3o</th><th class="num">V.Folgas</th><th class="num">Total</th></tr></thead><tbody></tbody>';
+    '<th>Tipo</th><th class="num">Produ\u00e7\u00e3o</th><th class="num">Vl.Total Repouso</th><th class="num">Total</th></tr></thead><tbody></tbody>';
   const tb = tab.querySelector('tbody');
   dados.forEach((d,i) => {
     const tr = document.createElement('tr');

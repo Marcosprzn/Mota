@@ -131,7 +131,7 @@ def exportar_excel():
         from xlwt import Workbook, easyxf
         wb = Workbook()
         ws = wb.add_sheet('Dados')
-        cab = ['ID','Nome','Engenho','Turma','Media','Folgas','Faltas','Perder','Garantidos','Tipo','Producao','Valor Folgas','Total']
+        cab = ['ID','Nome','Engenho','Turma','Vl.Repouso','Folgas','Faltas','Perder','Garantidos','Tipo','Producao','Vl.Total Repouso','Total']
         estilo_cab = easyxf('font: bold on, colour white; pattern: pattern solid, fore_colour dark_blue; borders: left thin, right thin, top thin, bottom thin;')
         estilo_num = easyxf('font: name Calibri, height 180; num_format: #,##0.00; borders: left thin, right thin, top thin, bottom thin;')
         estilo_int = easyxf('font: name Calibri, height 180; num_format: #,##0; borders: left thin, right thin, top thin, bottom thin;')
@@ -165,7 +165,7 @@ def exportar_excel():
     # fallback CSV
     si = io.StringIO()
     w = csv.writer(si)
-    w.writerow(['ID','Nome','Engenho','Turma','Media','Folgas','Faltas','Perder','Garantidos','Tipo','Producao','Valor Folgas','Total'])
+    w.writerow(['ID','Nome','Engenho','Turma','Vl.Repouso','Folgas','Faltas','Perder','Garantidos','Tipo','Producao','Vl.Total Repouso','Total'])
     for d in funcs:
         w.writerow([d['id'], d['nome'], d['engenho'], d['turma'], d['media'],
             d['folgas'], d['faltas'], d['perder'], d['garantidos'], d['tipo'],
