@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import xlrd, xlwt; print\\('ok', xlrd.__version__\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(python processar_folgas.py)",
+      "Bash(rtk wc *)",
+      "Bash(rtk grep *)"
+    ]
+  }
+}

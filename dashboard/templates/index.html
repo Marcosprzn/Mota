@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Folgas & Repousos</title>
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+:root {
+  --bg: #0c0f14; --bg2: #141a22; --bg3: #1e2632;
+  --border: #2a3442; --text: #e2e8f0; --text2: #8892a4;
+  --green: #2dd4bf; --amber: #f59e0b; --red: #ef4444; --blue: #60a5fa;
+  --accent: var(--green); --radius: 12px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text);
+  min-height: 100vh;
+}
+.mono { font-family: 'Consolas', 'Courier New', monospace; }
+
+header {
+  padding: 28px 32px 0;
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 16px;
+}
+header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; color: #fff; }
+header h1 span { color: var(--accent); }
+header .sub { font-size: 13px; color: var(--text2); font-family: 'DM Mono', monospace; margin-top: 2px; }
+
+/* KPIs */
+.kpis {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px; padding: 20px 32px 12px;
+}
+.kpi-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px;
+  transition: border-color .2s;
+}
+.kpi-card:hover { border-color: var(--accent); }
+.kpi-card .label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text2); margin-bottom: 4px; }
+.kpi-card .value { font-size: 22px; font-weight: 700; font-family: 'DM Mono', monospace; color: #fff; }
+.kpi-card .value.green { color: var(--green); }
+.kpi-card .value.amber { color: var(--amber); }
+.kpi-card .value.red { color: var(--red); }
+.kpi-card .value.blue { color: var(--blue); }
+
+/* Filters + Export */
+.barra {
+  padding: 0 32px 14px;
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+.barra label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .6px; }
+.barra select, .barra button {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); padding: 7px 12px;
+  font-family: 'DM Mono', monospace; font-size: 12px; cursor: pointer; outline: none;
+  transition: border-color .2s;
+}
+.barra select:hover, .barra select:focus, .barra button:hover { border-color: var(--accent); }
+.barra .spacer { flex: 1; }
+.barra .btn-export {
+  background: var(--bg3); border: 1px solid var(--border);
+  padding: 7px 14px; font-size: 11px; text-transform: uppercase; letter-spacing: .5px;
+}
+.barra .btn-export:hover { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+
+/* Charts */
+.charts {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 14px; padding: 0 32px 14px;
+}
+.chart-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px;
+}
+.chart-card h3 { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; }
+.chart-card canvas { max-height: 220px; }
+
+/* Scrollable table */
+.table-wrap {
+  padding: 0 32px 32px;
+}
+.table-wrap .topbar {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+}
+.table-wrap .topbar h2 { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; }
+.table-wrap .topbar .count { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text2); }
+
+.table-scroll {
+  max-height: 540px; overflow-y: auto;
+  border: 1px solid var(--border); border-radius: var(--radius);
+}
+.table-scroll::-webkit-scrollbar { width: 6px; }
+.table-scroll::-webkit-scrollbar-track { background: var(--bg2); }
+.table-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.table-scroll::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+table {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+  background: var(--bg2);
+}
+thead { position: sticky; top: 0; z-index: 2; }
+thead th {
+  background: var(--bg3); padding: 10px 10px;
+  text-align: left; font-weight: 600; font-size: 10px;
+  text-transform: uppercase; letter-spacing: .4px;
+  color: var(--text2); border-bottom: 1px solid var(--border);
+  white-space: nowrap; cursor: pointer; user-select: none;
+}
+thead th:hover { color: var(--text); }
+thead th.sorted { color: var(--accent); }
+tbody tr { border-bottom: 1px solid var(--border); transition: background .12s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--bg3); }
+tbody td { padding: 8px 10px; font-family: 'DM Mono', monospace; font-size: 11px; }
+tbody td.num { text-align: right; }
+tbody td .badge {
+  display: inline-block; padding: 1px 8px; border-radius: 20px;
+  font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px;
+}
+.badge.integral { background: rgba(45,212,191,0.15); color: var(--green); }
+.badge.meia { background: rgba(245,158,11,0.15); color: var(--amber); }
+.badge.zero { background: rgba(239,68,68,0.12); color: var(--red); }
+
+/* Loading */
+.loading {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 60vh; flex-direction: column; gap: 16px;
+}
+.spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 900px) {
+  .charts { grid-template-columns: 1fr; }
+  header { flex-direction: column; align-items: flex-start; }
+  .kpis { grid-template-columns: repeat(2, 1fr); padding: 12px; }
+  .charts, .table-wrap, .barra { padding-left: 14px; padding-right: 14px; }
+}
+
+/* PDF-only style - hidden on screen */
+#pdf-content { display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Folgas<span> &amp; </span>Repousos <span id="header-competencia" style="font-size:16px;font-weight:normal;margin-left:10px;color:var(--text2)"></span></h1>
+    <div class="sub">Dashboard analítico &middot; processamento de folgas e feriados</div>
+  </div>
+</header>
+
+<div id="app" style="display:none">
+  <div class="kpis" id="kpis"></div>
+
+  <div class="barra">
+    <label>Engenho</label>
+    <select id="filter-eng" onchange="filtrar()"><option value="Todos">Todos</option></select>
+    <label style="margin-left:4px">Tipo</label>
+    <select id="filter-tipo" onchange="filtrar()">
+      <option value="Todos">Todos</option>
+      <option value="INTEGRAL">Integral</option>
+      <option value="MEIA">Meia</option>
+    </select>
+    <label style="margin-left:4px">Período</label>
+    <select id="filter-periodo" onchange="recarregarComPeriodo()" title="Segure Ctrl para selecionar múltiplos meses">
+      <option value="">Todos</option>
+    </select>
+    <span class="spacer"></span>
+    <button class="btn-export btn-export-excel" onclick="exportarExcel()">Exportar Excel</button>
+    <button class="btn-export btn-export-pdf" onclick="exportarPDF()">Exportar PDF</button>
+  </div>
+
+  <div class="charts">
+    <div class="chart-card">
+      <h3>Total por Engenho (R$)</h3>
+      <canvas id="chart-engenhos"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Garantidos vs Faltas</h3>
+      <canvas id="chart-garantidos"></canvas>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <div class="topbar">
+      <h2>Funcionários</h2>
+      <span class="count" id="table-count"></span>
+    </div>
+    <div class="table-scroll" id="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="ordenar('id')" data-key="id">ID</th>
+            <th onclick="ordenar('nome')" data-key="nome">Nome</th>
+            <th onclick="ordenar('engenho')" data-key="engenho">Engenho</th>
+            <th onclick="ordenar('turma')" data-key="turma">Turma</th>
+            <th onclick="ordenar('media')" data-key="media" class="num">Média</th>
+            <th onclick="ordenar('folgas')" data-key="folgas" class="num">Folgas</th>
+            <th onclick="ordenar('faltas')" data-key="faltas" class="num">Faltas</th>
+            <th onclick="ordenar('perder')" data-key="perder" class="num">Perder</th>
+            <th onclick="ordenar('garantidos')" data-key="garantidos" class="num">Garant.</th>
+            <th onclick="ordenar('tipo')" data-key="tipo">Tipo</th>
+            <th onclick="ordenar('producao')" data-key="producao" class="num">Produção</th>
+            <th onclick="ordenar('valor_folgas')" data-key="valor_folgas" class="num">V.Folgas</th>
+            <th onclick="ordenar('total')" data-key="total" class="num">Total</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <div class="mono" style="color:var(--text2);font-size:13px">Processando planilhas...</div>
+</div>
+
+<div id="pdf-content"></div>
+
+<script>
+let todosFuncionarios = [];
+let ordenarChave = 'id';
+let ordenarDir = 'asc';
+let chartEng = null, chartGar = null;
+
+function fmt(v) {
+  if (v === 0 || v === '0') return '0,00';
+  return v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function fmtInt(v) { return v.toLocaleString('pt-BR'); }
+
+function criarKPI(l, v, c='') {
+  return '<div class="kpi-card"><div class="label">'+l+'</div><div class="value '+c+'">'+v+'</div></div>';
+}
+
+function getPeriodoParam() {
+  const sel = document.getElementById('filter-periodo');
+  return sel ? sel.value : '';
+}
+
+function carregarResumo(periodo) {
+  const params = new URLSearchParams();
+  if (periodo) params.set('periodo', periodo);
+  fetch('/api/resumo' + (params.toString() ? '?' + params.toString() : ''))
+    .then(r => {
+      if (!r.ok) throw new Error('Erro ao obter resumo: ' + r.statusText);
+      return r.json();
+    })
+    .then(data => {
+      const t = data.totais;
+
+      // Popular dropdown de períodos (apenas na primeira carga)
+      const selPer = document.getElementById('filter-periodo');
+      if (selPer && t.periodos_disponiveis && selPer.options.length <= 1) {
+        t.periodos_disponiveis.forEach(p => {
+          const o = document.createElement('option');
+          o.value = p; o.textContent = p;
+          selPer.appendChild(o);
+        });
+      }
+
+      if (t.competencia) {
+        document.getElementById('header-competencia').textContent = '- Ref: ' + t.competencia;
+      }
+      document.getElementById('kpis').innerHTML =
+        criarKPI('Funcionários', fmtInt(t.funcionarios), 'blue') +
+        criarKPI('Produção', 'R$ '+fmt(t.producao), 'green') +
+        criarKPI('Valor Folgas', 'R$ '+fmt(t.valor_folgas), 'amber') +
+        criarKPI('Total Geral', 'R$ '+fmt(t.total_geral), '') +
+        criarKPI('Repousos Garant.', fmtInt(t.garantidos), 'green') +
+        criarKPI('Faltas', fmtInt(t.faltas), 'red') +
+        criarKPI('MEIA', fmtInt(t.meias), 'amber') +
+        criarKPI('Engenhos', fmtInt(t.engenhos), 'blue');
+
+      // Popular/resetar dropdown de Engenho
+      const sel = document.getElementById('filter-eng');
+      const engAtual = sel.value;
+      while (sel.options.length > 1) sel.remove(1);
+      data.engenhos.forEach(e => {
+        const o = document.createElement('option');
+        o.value = e.nome; o.textContent = e.nome;
+        if (e.nome === engAtual) o.selected = true;
+        sel.appendChild(o);
+      });
+
+      if (chartEng) chartEng.destroy();
+      chartEng = new Chart(document.getElementById('chart-engenhos'), {
+        type: 'bar',
+        data: {
+          labels: data.engenhos.map(e=>e.nome),
+          datasets: [
+            {label:'Produção', data:data.engenhos.map(e=>e.producao),
+             backgroundColor:'rgba(45,212,191,0.5)', borderColor:'#2dd4bf', borderWidth:1},
+            {label:'Valor Folgas', data:data.engenhos.map(e=>e.valor_folgas),
+             backgroundColor:'rgba(245,158,11,0.4)', borderColor:'#f59e0b', borderWidth:1}
+          ]
+        },
+        options: {
+          responsive:true,
+          plugins:{legend:{labels:{color:'#8892a4',font:{size:10}}}},
+          scales:{
+            x:{ticks:{color:'#8892a4',font:{size:9}},grid:{color:'#1e2632'}},
+            y:{ticks:{color:'#8892a4',font:{size:9},callback:v=>'R$'+v.toLocaleString('pt-BR')},grid:{color:'#1e2632'}}
+          }
+        }
+      });
+    })
+    .catch(err => {
+      console.error(err);
+    });
+}
+
+function carregarFuncionarios(periodo) {
+  const params = new URLSearchParams();
+  if (periodo) params.set('periodo', periodo);
+  fetch('/api/funcionarios' + (params.toString() ? '?' + params.toString() : ''))
+    .then(r => {
+      if (!r.ok) throw new Error('Erro ao obter funcionários: ' + r.statusText);
+      return r.json();
+    })
+    .then(data => {
+      todosFuncionarios = data;
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      filtrar();
+    })
+    .catch(err => {
+      console.error(err);
+      document.getElementById('loading').innerHTML = 
+        '<div class="mono" style="color:var(--red);font-size:14px;font-weight:bold;text-align:center;padding:40px 20px;">' +
+        'Ocorreu um erro ao processar as planilhas.<br>' +
+        '<span style="font-size:12px;font-weight:normal;color:var(--text2);display:block;margin-top:10px;">' + err.message + '</span></div>';
+    });
+}
+
+function recarregarComPeriodo() {
+  const periodo = getPeriodoParam();
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loading').style.display = 'flex';
+  carregarResumo(periodo);
+  carregarFuncionarios(periodo);
+}
+
+function filtrar() {
+  const eng = document.getElementById('filter-eng').value;
+  const tipo = document.getElementById('filter-tipo').value;
+  let f = todosFuncionarios;
+  if (eng !== 'Todos') f = f.filter(d=>d.engenho===eng);
+  if (tipo !== 'Todos') f = f.filter(d=>d.tipo===tipo);
+  renderTabela(f);
+
+  const engSel = eng !== 'Todos' ? eng : null;
+  const base = engSel ? todosFuncionarios.filter(d=>d.engenho===engSel) : todosFuncionarios;
+  const ag = {};
+  base.forEach(d => {
+    const g = d.engenho;
+    if (!ag[g]) ag[g] = {garantidos:0,faltas:0,folgas:0};
+    ag[g].garantidos += d.garantidos; ag[g].faltas += d.faltas; ag[g].folgas += d.folgas;
+  });
+  const lbs = Object.keys(ag);
+  if (chartGar) chartGar.destroy();
+  chartGar = new Chart(document.getElementById('chart-garantidos'), {
+    type: 'bar',
+    data: {
+      labels: lbs,
+      datasets: [
+        {label:'Garantidos', data:lbs.map(l=>ag[l].garantidos),
+         backgroundColor:'rgba(45,212,191,0.5)', borderColor:'#2dd4bf', borderWidth:1},
+        {label:'Faltas', data:lbs.map(l=>ag[l].faltas),
+         backgroundColor:'rgba(239,68,68,0.4)', borderColor:'#ef4444', borderWidth:1}
+      ]
+    },
+    options: {
+      responsive:true,
+      plugins:{legend:{labels:{color:'#8892a4',font:{size:10,family:'DM Mono'}}}},
+      scales:{
+        x:{ticks:{color:'#8892a4',font:{size:9}},grid:{color:'#1e2632'}},
+        y:{ticks:{color:'#8892a4',font:{size:9}},grid:{color:'#1e2632'}}
+      }
+    }
+  });
+}
+
+function renderTabela(dados) {
+  document.getElementById('table-count').textContent = dados.length + ' registros';
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = '';
+  dados.sort((a,b)=>{
+    let va=a[ordenarChave], vb=b[ordenarChave];
+    if (typeof va==='string') return ordenarDir==='asc'?va.localeCompare(vb):vb.localeCompare(va);
+    return ordenarDir==='asc'?va-vb:vb-va;
+  });
+  dados.forEach(d => {
+    const badge = d.tipo==='MEIA'?'meia':'integral';
+    const bg = d.garantidos===0?'zero':'';
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td>'+d.id+'</td>' +
+      '<td style="font-weight:500">'+d.nome+'</td>' +
+      '<td>'+d.engenho+'</td><td>'+d.turma+'</td>' +
+      '<td class="num">'+fmt(d.media)+'</td>' +
+      '<td class="num">'+fmtInt(d.folgas)+'</td>' +
+      '<td class="num">'+fmtInt(d.faltas)+'</td>' +
+      '<td class="num">'+fmtInt(d.perder)+'</td>' +
+      '<td class="num"><span class="badge '+bg+'">'+fmtInt(d.garantidos)+'</span></td>' +
+      '<td><span class="badge '+badge+'">'+d.tipo+'</span></td>' +
+      '<td class="num">'+fmt(d.producao)+'</td>' +
+      '<td class="num">'+fmt(d.valor_folgas)+'</td>' +
+      '<td class="num" style="font-weight:600">'+fmt(d.total)+'</td>';
+    tbody.appendChild(tr);
+  });
+  document.querySelectorAll('thead th').forEach(th=>th.classList.remove('sorted'));
+  const th = document.querySelector('thead th[data-key="'+ordenarChave+'"]');
+  if (th) th.classList.add('sorted');
+}
+
+function ordenar(key) {
+  if (ordenarChave===key) ordenarDir = ordenarDir==='asc'?'desc':'asc';
+  else { ordenarChave=key; ordenarDir='asc'; }
+  filtrar();
+}
+
+function exportarExcel() {
+  const eng = document.getElementById('filter-eng').value;
+  const per = getPeriodoParam();
+  let url = '/api/exportar/excel?engenho=' + encodeURIComponent(eng);
+  if (per) url += '&periodo=' + encodeURIComponent(per);
+  window.open(url, '_blank');
+}
+
+function exportarPDF() {
+  const eng = document.getElementById('filter-eng').value;
+  const tipo = document.getElementById('filter-tipo').value;
+  const per = getPeriodoParam();
+  let dados = todosFuncionarios;
+  if (eng !== 'Todos') dados = dados.filter(d=>d.engenho===eng);
+  if (tipo !== 'Todos') dados = dados.filter(d=>d.tipo===tipo);
+
+  const div = document.getElementById('pdf-content');
+  div.style.display = 'block';
+  div.innerHTML = '';
+  const style = document.createElement('style');
+  style.textContent = `
+    @page { margin: 8mm; size: landscape; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 7px; }
+    h2 { font-size: 11px; margin-bottom: 6px; color: #1a3d3a; }
+    table { width: 100%; border-collapse: collapse; font-size: 6.5px; }
+    th { background: #0f766e; color: #fff; padding: 3px 4px; text-align: left; font-weight: 600; font-size: 6px; white-space: nowrap; }
+    td { padding: 2px 4px; border-bottom: 1px solid #ddd; }
+    td.num { text-align: right; }
+    .r { background: #f0fdfa; }
+    .tot { font-weight: 700; background: #0f766e; color: #fff; }
+    .badge-pdf { padding: 0 4px; border-radius: 2px; font-size: 5.5px; font-weight: 600; }
+    .int { background: #d1fae5; color: #065f46; }
+    .meia { background: #fef3c7; color: #92400e; }
+  `;
+  div.appendChild(style);
+
+  const h2 = document.createElement('h2');
+  h2.textContent = 'Relatório de Folgas e Repousos' + (eng!=='Todos'?' - '+eng:'') + (tipo!=='Todos'?' ('+tipo+')':'') + (per?' | Ref: '+per:'');
+  div.appendChild(h2);
+
+  const tab = document.createElement('table');
+  tab.innerHTML = '<thead><tr>' +
+    '<th>ID</th><th>Nome</th><th>Engenho</th><th>Turma</th><th class="num">M\u00e9dia</th>' +
+    '<th class="num">Folgas</th><th class="num">Faltas</th><th class="num">Perder</th><th class="num">Garant.</th>' +
+    '<th>Tipo</th><th class="num">Produ\u00e7\u00e3o</th><th class="num">V.Folgas</th><th class="num">Total</th></tr></thead><tbody></tbody>';
+  const tb = tab.querySelector('tbody');
+  dados.forEach((d,i) => {
+    const tr = document.createElement('tr');
+    tr.className = i%2===1?'r':'';
+    tr.innerHTML = '<td>'+d.id+'</td><td>'+d.nome+'</td><td>'+d.engenho+'</td><td>'+d.turma+'</td>' +
+      '<td class="num">'+d.media.toFixed(2).replace('.',',')+'</td>' +
+      '<td class="num">'+d.folgas+'</td><td class="num">'+d.faltas+'</td><td class="num">'+d.perder+'</td><td class="num">'+d.garantidos+'</td>' +
+      '<td><span class="badge-pdf '+(d.tipo==='MEIA'?'meia':'int')+'">'+d.tipo+'</span></td>' +
+      '<td class="num">'+d.producao.toFixed(2).replace('.',',')+'</td>' +
+      '<td class="num">'+d.valor_folgas.toFixed(2).replace('.',',')+'</td>' +
+      '<td class="num">'+d.total.toFixed(2).replace('.',',')+'</td>';
+    tb.appendChild(tr);
+  });
+
+  // Total row
+  const tr = document.createElement('tr');
+  tr.className = 'tot';
+  tr.innerHTML = '<td colspan="9" style="text-align:right;padding-right:8px">TOTAIS</td>' +
+    '<td></td>' +
+    '<td class="num">'+dados.reduce((s,d)=>s+d.producao,0).toFixed(2).replace('.',',')+'</td>' +
+    '<td class="num">'+dados.reduce((s,d)=>s+d.valor_folgas,0).toFixed(2).replace('.',',')+'</td>' +
+    '<td class="num">'+dados.reduce((s,d)=>s+d.total,0).toFixed(2).replace('.',',')+'</td>';
+  tb.appendChild(tr);
+
+  div.appendChild(tab);
+
+  html2pdf().set({
+    margin: 8,
+    filename: 'relatorio_folgas.pdf',
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, letterRendering: true },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+  }).from(div).save().then(() => {
+    div.style.display = 'none';
+    div.innerHTML = '';
+  });
+}
+
+carregarResumo('');
+carregarFuncionarios('');
+</script>
+</body>
+</html>
