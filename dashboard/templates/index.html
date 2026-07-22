@@ -446,24 +446,93 @@ function exportarPDF() {
   div.innerHTML = '';
   const style = document.createElement('style');
   style.textContent = `
-    @page { margin: 8mm; size: landscape; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 7px; }
-    h2 { font-size: 11px; margin-bottom: 6px; color: #1a3d3a; }
-    table { width: 100%; border-collapse: collapse; font-size: 6.5px; }
-    th { background: #0f766e; color: #fff; padding: 3px 4px; text-align: left; font-weight: 600; font-size: 6px; white-space: nowrap; }
-    td { padding: 2px 4px; border-bottom: 1px solid #ddd; }
-    td.num { text-align: right; }
-    .r { background: #f0fdfa; }
-    .tot { font-weight: 700; background: #0f766e; color: #fff; }
-    .badge-pdf { padding: 0 4px; border-radius: 2px; font-size: 5.5px; font-weight: 600; }
-    .int { background: #d1fae5; color: #065f46; }
-    .meia { background: #fef3c7; color: #92400e; }
+    @page { margin: 10mm; size: landscape; }
+    body { 
+      font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+      font-size: 8px; 
+      color: #333; 
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      border-bottom: 2px solid #0f766e;
+      padding-bottom: 8px;
+      margin-bottom: 15px;
+    }
+    .header h2 { 
+      font-size: 16px; 
+      margin: 0; 
+      color: #0f766e; 
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .header .meta {
+      text-align: right;
+      font-size: 8px;
+      color: #64748b;
+      line-height: 1.4;
+    }
+    table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      font-size: 7.5px; 
+    }
+    th { 
+      background-color: #0f766e; 
+      color: #ffffff; 
+      padding: 6px 5px; 
+      text-align: left; 
+      font-weight: 600; 
+      font-size: 7px; 
+      text-transform: uppercase;
+      letter-spacing: 0.2px;
+      border: 1px solid #0d665f;
+    }
+    td { 
+      padding: 5px; 
+      border-bottom: 1px solid #cbd5e1; 
+      border-left: 1px solid #e2e8f0;
+      border-right: 1px solid #e2e8f0;
+      vertical-align: middle;
+      background-color: #ffffff;
+    }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .tot { 
+      font-weight: bold; 
+      background-color: #e2e8f0; 
+      color: #0f766e; 
+    }
+    .tot td { border-top: 2px solid #0f766e; padding: 6px 5px; }
+    .badge-pdf { 
+      padding: 2px 4px; 
+      border-radius: 4px; 
+      font-size: 6.5px; 
+      font-weight: bold; 
+      display: inline-block;
+      text-transform: uppercase;
+    }
+    .int { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .meia { background-color: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
   `;
   div.appendChild(style);
 
-  const h2 = document.createElement('h2');
-  h2.textContent = 'Relatório de Folgas e Repousos' + (eng!=='Todos'?' - '+eng:'') + (tipo!=='Todos'?' ('+tipo+')':'') + (per?' | Ref: '+per:'');
-  div.appendChild(h2);
+  const headerDiv = document.createElement('div');
+  headerDiv.className = 'header';
+  const dataHora = new Date().toLocaleString('pt-BR');
+  const filtrosAplicados = (eng!=='Todos'?'Engenho: '+eng:'') + (eng!=='Todos' && tipo!=='Todos'?' | ':'') + (tipo!=='Todos'?'Tipo: '+tipo:'') + ((eng!=='Todos'||tipo!=='Todos') && per?' | ':'') + (per?'Ref: '+per:'');
+  
+  headerDiv.innerHTML = `
+    <div>
+      <h2>Sistema Mota - Folgas e Repousos</h2>
+      <div style="font-size: 10px; color: #475569; margin-top: 4px; font-weight: 500;">Relatório Analítico Consolidado</div>
+    </div>
+    <div class="meta">
+      <div><strong>Gerado em:</strong> ${dataHora}</div>
+      ${filtrosAplicados ? `<div style="margin-top: 3px;"><strong>Filtros:</strong> ${filtrosAplicados}</div>` : ''}
+    </div>
+  `;
+  div.appendChild(headerDiv);
 
   const tab = document.createElement('table');
   tab.innerHTML = '<thead><tr>' +
@@ -473,7 +542,6 @@ function exportarPDF() {
   const tb = tab.querySelector('tbody');
   dados.forEach((d,i) => {
     const tr = document.createElement('tr');
-    tr.className = i%2===1?'r':'';
     tr.innerHTML = '<td>'+d.id+'</td><td>'+d.nome+'</td><td>'+d.engenho+'</td><td>'+d.turma+'</td>' +
       '<td class="num">'+d.media.toFixed(2).replace('.',',')+'</td>' +
       '<td class="num">'+d.folgas+'</td><td class="num">'+d.faltas+'</td><td class="num">'+d.perder+'</td><td class="num">'+d.garantidos+'</td>' +
