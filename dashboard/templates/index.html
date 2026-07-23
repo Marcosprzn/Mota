@@ -60,6 +60,8 @@ header .sub { font-size: 13px; color: var(--text2); font-family: 'DM Mono', mono
   transition: border-color .2s;
 }
 .barra select:hover, .barra select:focus, .barra button:hover { border-color: var(--accent); }
+.barra select[multiple] { padding: 2px 8px; height: 34px; min-width: 140px; }
+.barra select[multiple]:hover, .barra select[multiple]:focus { border-color: var(--accent); }
 .barra .spacer { flex: 1; }
 .barra .btn-export {
   background: var(--bg3); border: 1px solid var(--border);
@@ -166,7 +168,7 @@ tbody td .badge {
       <option value="MEIA">Meia</option>
     </select>
     <label style="margin-left:4px">Período</label>
-    <select id="filter-periodo" onchange="recarregarComPeriodo()" title="Segure Ctrl para selecionar múltiplos meses">
+    <select id="filter-periodo" multiple onchange="recarregarComPeriodo()" title="Segure Ctrl para selecionar múltiplos meses">
       <option value="">Todos</option>
     </select>
     <span class="spacer"></span>
@@ -241,7 +243,8 @@ function criarKPI(l, v, c='') {
 
 function getPeriodoParam() {
   const sel = document.getElementById('filter-periodo');
-  return sel ? sel.value : '';
+  if (!sel) return '';
+  return Array.from(sel.selectedOptions).map(o => o.value).filter(v => v !== '').join(',');
 }
 
 function carregarResumo(periodo) {
@@ -288,28 +291,7 @@ function carregarResumo(periodo) {
         if (e.nome === engAtual) o.selected = true;
         sel.appendChild(o);
       });
-
-      if (chartEng) chartEng.destroy();
-      chartEng = new Chart(document.getElementById('chart-engenhos'), {
-        type: 'bar',
-        data: {
-          labels: data.engenhos.map(e=>e.nome),
-          datasets: [
-            {label:'Produção', data:data.engenhos.map(e=>e.producao),
-             backgroundColor:'rgba(45,212,191,0.5)', borderColor:'#2dd4bf', borderWidth:1},
-            {label:'Valor Folgas', data:data.engenhos.map(e=>e.valor_folgas),
-             backgroundColor:'rgba(245,158,11,0.4)', borderColor:'#f59e0b', borderWidth:1}
-          ]
-        },
-        options: {
-          responsive:true,
-          plugins:{legend:{labels:{color:'#8892a4',font:{size:10}}}},
-          scales:{
-            x:{ticks:{color:'#8892a4',font:{size:9}},grid:{color:'#1e2632'}},
-            y:{ticks:{color:'#8892a4',font:{size:9},callback:v=>'R$'+v.toLocaleString('pt-BR')},grid:{color:'#1e2632'}}
-          }
-        }
-      });
+      // Charts serao desenhados pelo filtrar()
     })
     .catch(err => {
       console.error(err);
@@ -355,10 +337,58 @@ function filtrar() {
   if (tipo !== 'Todos') f = f.filter(d=>d.tipo===tipo);
   renderTabela(f);
 
-  const engSel = eng !== 'Todos' ? eng : null;
-  const base = engSel ? todosFuncionarios.filter(d=>d.engenho===engSel) : todosFuncionarios;
+  // ── Atualizar KPIs com dados filtrados ──
+  const totalProd = f.reduce((s,d)=>s+d.producao,0);
+  const totalVF = f.reduce((s,d)=>s+d.valor_folgas,0);
+  const totalGeral = f.reduce((s,d)=>s+d.total,0);
+  const totalGarant = f.reduce((s,d)=>s+d.garantidos,0);
+  const totalFaltas = f.reduce((s,d)=>s+d.faltas,0);
+  const meias = f.filter(d=>d.tipo==='MEIA').length;
+  const engenhosUnicos = new Set(f.map(d=>d.engenho)).size;
+  document.getElementById('kpis').innerHTML =
+    criarKPI('Funcion\u00e1rios', fmtInt(f.length), 'blue') +
+    criarKPI('Produ\u00e7\u00e3o', 'R$ '+fmt(totalProd), 'green') +
+    criarKPI('Valor Folgas', 'R$ '+fmt(totalVF), 'amber') +
+    criarKPI('Total Geral', 'R$ '+fmt(totalGeral), '') +
+    criarKPI('Repousos Garant.', fmtInt(totalGarant), 'green') +
+    criarKPI('Faltas', fmtInt(totalFaltas), 'red') +
+    criarKPI('MEIA', fmtInt(meias), 'amber') +
+    criarKPI('Engenhos', fmtInt(engenhosUnicos), 'blue');
+
+  // ── Gráfico: Total por Engenho ──
+  const engAg = {};
+  f.forEach(d => {
+    const g = d.engenho;
+    if (!engAg[g]) engAg[g] = {producao:0, valor_folgas:0};
+    engAg[g].producao += d.producao;
+    engAg[g].valor_folgas += d.valor_folgas;
+  });
+  const engLbs = Object.keys(engAg);
+  if (chartEng) chartEng.destroy();
+  chartEng = new Chart(document.getElementById('chart-engenhos'), {
+    type: 'bar',
+    data: {
+      labels: engLbs,
+      datasets: [
+        {label:'Produ\u00e7\u00e3o', data:engLbs.map(l=>engAg[l].producao),
+         backgroundColor:'rgba(45,212,191,0.5)', borderColor:'#2dd4bf', borderWidth:1},
+        {label:'Valor Folgas', data:engLbs.map(l=>engAg[l].valor_folgas),
+         backgroundColor:'rgba(245,158,11,0.4)', borderColor:'#f59e0b', borderWidth:1}
+      ]
+    },
+    options: {
+      responsive:true,
+      plugins:{legend:{labels:{color:'#8892a4',font:{size:10}}}},
+      scales:{
+        x:{ticks:{color:'#8892a4',font:{size:9}},grid:{color:'#1e2632'}},
+        y:{ticks:{color:'#8892a4',font:{size:9},callback:v=>'R$'+v.toLocaleString('pt-BR')},grid:{color:'#1e2632'}}
+      }
+    }
+  });
+
+  // ── Gráfico: Garantidos vs Faltas ──
   const ag = {};
-  base.forEach(d => {
+  f.forEach(d => {
     const g = d.engenho;
     if (!ag[g]) ag[g] = {garantidos:0,faltas:0,folgas:0};
     ag[g].garantidos += d.garantidos; ag[g].faltas += d.faltas; ag[g].folgas += d.folgas;
@@ -378,7 +408,7 @@ function filtrar() {
     },
     options: {
       responsive:true,
-      plugins:{legend:{labels:{color:'#8892a4',font:{size:10,family:'DM Mono'}}}},
+      plugins:{legend:{labels:{color:'#8892a4',font:{size:10}}}},
       scales:{
         x:{ticks:{color:'#8892a4',font:{size:9}},grid:{color:'#1e2632'}},
         y:{ticks:{color:'#8892a4',font:{size:9}},grid:{color:'#1e2632'}}

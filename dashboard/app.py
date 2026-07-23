@@ -129,38 +129,125 @@ def exportar_excel():
 
     try:
         from xlwt import Workbook, easyxf
-        wb = Workbook()
-        ws = wb.add_sheet('Dados')
-        cab = ['ID','Nome','Engenho','Turma','Vl.Repouso','Folgas','Faltas','Perder','Garantidos','Tipo','Producao','Vl.Total Repouso','Total']
-        estilo_cab = easyxf('font: bold on, colour white; pattern: pattern solid, fore_colour dark_blue; borders: left thin, right thin, top thin, bottom thin;')
-        estilo_num = easyxf('font: name Calibri, height 180; num_format: #,##0.00; borders: left thin, right thin, top thin, bottom thin;')
-        estilo_int = easyxf('font: name Calibri, height 180; num_format: #,##0; borders: left thin, right thin, top thin, bottom thin;')
-        estilo_txt = easyxf('font: name Calibri, height 180; borders: left thin, right thin, top thin, bottom thin;')
-        for c, t in enumerate(cab):
-            ws.write(0, c, t, estilo_cab)
-            ws.col(c).width = int(([10,40,22,8,10,8,8,8,10,8,16,16,16][c]) * 256)
-        for i, d in enumerate(funcs):
-            r = i + 1
-            ws.write(r, 0, int(d['id']), estilo_int)
-            ws.write(r, 1, d['nome'], estilo_txt)
-            ws.write(r, 2, d['engenho'], estilo_txt)
-            ws.write(r, 3, d['turma'], estilo_txt)
-            ws.write(r, 4, d['media'], estilo_num)
-            ws.write(r, 5, d['folgas'], estilo_int)
-            ws.write(r, 6, d['faltas'], estilo_int)
-            ws.write(r, 7, d['perder'], estilo_int)
-            ws.write(r, 8, d['garantidos'], estilo_int)
-            ws.write(r, 9, d['tipo'], estilo_txt)
-            ws.write(r, 10, d['producao'], estilo_num)
-            ws.write(r, 11, d['valor_folgas'], estilo_num)
-            ws.write(r, 12, d['total'], estilo_num)
+        import re
+        
+        def sanitizar_aba(nome):
+            nome = re.sub(r'[\\/?*\[\]:]', '', nome)
+            return nome[:31] or 'Aba'
+
+        wb = Workbook(encoding='utf-8')
+        
+        # ── Estilos ──
+        base_fmt = 'font: name Calibri, height 180; alignment: vert centre; borders: left thin, right thin, top thin, bottom thin;'
+        
+        style_cab = easyxf(
+            'font: name Calibri, height 200, bold on, colour white;'
+            'pattern: pattern solid, fore_colour dark_blue;'
+            'alignment: horiz centre, vert centre, wrap on;'
+            'borders: left thin, right thin, top thin, bottom thin;'
+        )
+        
+        style_num = easyxf(base_fmt + 'alignment: horiz centre, vert centre;')
+        style_num.num_format_str = '#,##0.00'
+        
+        style_int = easyxf(base_fmt + 'alignment: horiz centre, vert centre;')
+        style_int.num_format_str = '#,##0'
+        
+        style_text = easyxf(base_fmt + 'alignment: horiz left, vert centre;')
+        
+        alt_fmt = 'font: name Calibri, height 180; pattern: pattern solid, fore_colour light_green; alignment: vert centre; borders: left thin, right thin, top thin, bottom thin;'
+        
+        style_num_alt = easyxf(alt_fmt + 'alignment: horiz centre, vert centre;')
+        style_num_alt.num_format_str = '#,##0.00'
+        
+        style_int_alt = easyxf(alt_fmt + 'alignment: horiz centre, vert centre;')
+        style_int_alt.num_format_str = '#,##0'
+        
+        style_text_alt = easyxf(alt_fmt + 'alignment: horiz left, vert centre;')
+        
+        tot_fmt = 'font: name Calibri, height 200, bold on, colour white; pattern: pattern solid, fore_colour dark_blue; alignment: horiz centre, vert centre; borders: left medium, right medium, top medium, bottom medium;'
+        
+        style_total = easyxf(tot_fmt)
+        style_total.num_format_str = '#,##0.00'
+        
+        style_total_txt = easyxf(tot_fmt)
+
+        cabecalhos = [
+            'ID', 'Nome', 'Engenho', 'Turma', 'Média',
+            'Folgas', 'Faltas', 'Perder',
+            'Garantidos', 'Tipo',
+            'Produção', 'Vl.Total Repouso', 'Total'
+        ]
+        col_widths = [10, 40, 22, 8, 10, 8, 8, 8, 10, 8, 16, 16, 16]
+
+        def escrever_planilha(ws, dados_plan):
+            # Cabeçalho
+            for c, (tit, w) in enumerate(zip(cabecalhos, col_widths)):
+                ws.write(0, c, tit, style_cab)
+                ws.col(c).width = int(w * 256)
+            
+            # Dados
+            for i, d in enumerate(dados_plan):
+                is_alt = i % 2 == 1
+                r = i + 1
+                ws.write(r, 0, int(d['id']), style_int_alt if is_alt else style_int)
+                ws.write(r, 1, d['nome'], style_text_alt if is_alt else style_text)
+                ws.write(r, 2, d['engenho'], style_text_alt if is_alt else style_text)
+                ws.write(r, 3, d['turma'], style_text_alt if is_alt else style_text)
+                ws.write(r, 4, d['media'], style_num_alt if is_alt else style_num)
+                ws.write(r, 5, d['folgas'], style_int_alt if is_alt else style_int)
+                ws.write(r, 6, d['faltas'], style_int_alt if is_alt else style_int)
+                ws.write(r, 7, d['perder'], style_int_alt if is_alt else style_int)
+                ws.write(r, 8, d['garantidos'], style_int_alt if is_alt else style_int)
+                ws.write(r, 9, d['tipo'], style_text_alt if is_alt else style_text)
+                ws.write(r, 10, d['producao'], style_num_alt if is_alt else style_num)
+                ws.write(r, 11, d['valor_folgas'], style_num_alt if is_alt else style_num)
+                ws.write(r, 12, d['total'], style_num_alt if is_alt else style_num)
+            
+            # Totais
+            tr = len(dados_plan) + 1
+            ws.write(tr, 0, '', style_total_txt)
+            ws.write(tr, 1, 'TOTAIS', style_total_txt)
+            for c in range(2, 5):
+                ws.write(tr, c, '', style_total_txt)
+            ws.write(tr, 5, sum(d['folgas'] for d in dados_plan), style_total)
+            ws.write(tr, 6, sum(d['faltas'] for d in dados_plan), style_total)
+            ws.write(tr, 7, sum(d['perder'] for d in dados_plan), style_total)
+            ws.write(tr, 8, sum(d['garantidos'] for d in dados_plan), style_total)
+            ws.write(tr, 9, '', style_total_txt)
+            ws.write(tr, 10, sum(d['producao'] for d in dados_plan), style_total)
+            ws.write(tr, 11, sum(d['valor_folgas'] for d in dados_plan), style_total)
+            ws.write(tr, 12, sum(d['total'] for d in dados_plan), style_total)
+
+        # Se for "Todos" e tiver múltiplos engenhos, gerar abas individuais além da aba "Geral"
+        if not eng or eng == 'Todos':
+            ws_geral = wb.add_sheet('Geral')
+            escrever_planilha(ws_geral, funcs)
+            
+            # Agrupar por engenho
+            engenhos = OrderedDict()
+            for d in funcs:
+                e = d['engenho']
+                if e not in engenhos:
+                    engenhos[e] = []
+                engenhos[e].append(d)
+                
+            for e, dados_eng in engenhos.items():
+                nome_aba = sanitizar_aba(e)
+                ws_eng = wb.add_sheet(nome_aba)
+                escrever_planilha(ws_eng, dados_eng)
+        else:
+            # Apenas uma aba com o engenho selecionado
+            ws_eng = wb.add_sheet(sanitizar_aba(eng))
+            escrever_planilha(ws_eng, funcs)
+
         buf = io.BytesIO()
         wb.save(buf)
         buf.seek(0)
         return Response(buf.getvalue(), mimetype='application/vnd.ms-excel',
             headers={'Content-Disposition': 'attachment; filename=dashboard_folgas.xls'})
-    except ImportError:
-        pass
+    except Exception as e:
+        print(f"Erro ao gerar planilha Excel (usando fallback CSV): {e}")
 
     # fallback CSV
     si = io.StringIO()
