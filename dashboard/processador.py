@@ -61,13 +61,36 @@ def processar_par(arq_relatorio, arq_lancamentos):
 
     def processa_eventos(eid, eventos, media_val=0.0):
         nonlocal competencia_data
+
+        # ── Encontrar o primeiro dia de trabalho real ──
+        primeiro_trabalho = None
+        for dt, tipo, horas, colg in eventos:
+            if dt is None:
+                continue
+            if tipo not in ('FOLGA', 'FERIADO', 'FALTA NAO JUSTIFICADA', 'FERIAS', 'AFASTADO') and 'Atestado' not in tipo:
+                primeiro_trabalho = dt
+                break
+
+        # ── Filtrar: ignorar FOLGA/FERIADO/FALTA antes da admissão ──
+        evt_filtrados = []
+        for item in eventos:
+            dt = item[0]
+            if dt is None:
+                evt_filtrados.append(item)
+                continue
+            if primeiro_trabalho and dt < primeiro_trabalho:
+                tipo = item[1]
+                if tipo in ('FOLGA', 'FERIADO', 'FALTA NAO JUSTIFICADA'):
+                    continue
+            evt_filtrados.append(item)
+
         folga_total = 0
         falta_total = 0
         meia = False
         semanas = {}
         g_por_dia = {}
 
-        for dt, tipo, horas, colg in eventos:
+        for dt, tipo, horas, colg in evt_filtrados:
             if dt is None:
                 continue
             if competencia_data is None:
@@ -108,7 +131,7 @@ def processar_par(arq_relatorio, arq_lancamentos):
 
         dias_trab_total = set()
         dias_meia_conj = set()
-        for dt, tipo, horas, colg in eventos:
+        for dt, tipo, horas, colg in evt_filtrados:
             if dt is None:
                 continue
             chave = (dt.year, dt.month, dt.day)
