@@ -236,13 +236,14 @@ def processar_par(arq_relatorio, arq_lancamentos):
                 base_media = round(producao - soma_g_meia, 2)
                 media_ajust = round(base_media / dias_trab, 2) if dias_trab > 0 else media
                 valor_folgas = 0.0
-            producao_final = producao
+            producao_final = round(producao - valor_folgas, 2)
             soma_total = round(producao_final, 2)
             tipo = 'MEIA'
         else:
             producao_final = producao
             media_ajust = media
             valor_folgas = round(media * folgas_ajustadas, 2)
+            producao_final = round(producao - valor_folgas, 2)
             soma_total = round(producao_final, 2)
             tipo = 'INTEGRAL'
 
