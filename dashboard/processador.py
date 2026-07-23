@@ -228,24 +228,22 @@ def processar_par(arq_relatorio, arq_lancamentos):
         if meia:
             dias_trab = dias_trab_por_id.get(func_id, 0)
             soma_g_meia = soma_g_meia_por_id.get(func_id, 0.0)
-            if folgas_ajustadas > 0 and soma_g_meia >= folgas_ajustadas * 27.40:
+            if folgas_ajustadas > 0:
                 base_media = round(producao - 54.80 * folgas_ajustadas * 1.5, 2)
-                producao_final = round(producao - 54.80 * folgas_ajustadas, 2)
                 media_ajust = round(base_media / dias_trab, 2) if dias_trab > 0 else media
                 valor_folgas = round(media_ajust * folgas_ajustadas, 2)
             else:
-                folgas_ajustadas = 0
                 base_media = round(producao - soma_g_meia, 2)
                 media_ajust = round(base_media / dias_trab, 2) if dias_trab > 0 else media
-                producao_final = producao
                 valor_folgas = 0.0
-            soma_total = round(producao_final + valor_folgas, 2)
+            producao_final = producao
+            soma_total = round(producao_final, 2)
             tipo = 'MEIA'
         else:
             producao_final = producao
             media_ajust = media
             valor_folgas = round(media * folgas_ajustadas, 2)
-            soma_total = round(producao_final + valor_folgas, 2)
+            soma_total = round(producao_final, 2)
             tipo = 'INTEGRAL'
 
         resultados.append({
