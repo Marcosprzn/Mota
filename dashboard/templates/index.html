@@ -52,16 +52,14 @@ header .sub { font-size: 13px; color: var(--text2); font-family: 'DM Mono', mono
   padding: 0 32px 14px;
   display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
 }
-.barra label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .6px; }
+.barra label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .6px; white-space: nowrap; }
 .barra select, .barra button {
   background: var(--bg2); border: 1px solid var(--border);
   border-radius: 8px; color: var(--text); padding: 7px 12px;
-  font-family: 'DM Mono', monospace; font-size: 12px; cursor: pointer; outline: none;
+  font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; cursor: pointer; outline: none;
   transition: border-color .2s;
 }
 .barra select:hover, .barra select:focus, .barra button:hover { border-color: var(--accent); }
-.barra select[multiple] { padding: 2px 8px; height: 34px; min-width: 140px; }
-.barra select[multiple]:hover, .barra select[multiple]:focus { border-color: var(--accent); }
 .barra .spacer { flex: 1; }
 .barra .btn-export {
   background: var(--bg3); border: 1px solid var(--border);
@@ -127,6 +125,48 @@ tbody td .badge {
 .badge.meia { background: rgba(245,158,11,0.15); color: var(--amber); }
 .badge.zero { background: rgba(239,68,68,0.12); color: var(--red); }
 
+/* Period pills */
+.period-pills {
+  display: flex; gap: 4px; align-items: center;
+  overflow-x: auto; overflow-y: hidden;
+  max-width: 420px; flex: 1 1 auto;
+  padding: 0 4px;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  /* fade edges */
+  mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+}
+.period-pills::-webkit-scrollbar { height: 3px; }
+.period-pills::-webkit-scrollbar-track { background: transparent; }
+.period-pills::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.period-pills .pill {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--text2);
+  padding: 4px 12px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all .2s;
+  user-select: none;
+  white-space: nowrap;
+}
+.period-pills .pill:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.period-pills .pill.active {
+  background: var(--green-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+.period-pills .pill.active:hover {
+  background: rgba(45,212,191,0.25);
+}
+
 /* Loading */
 .loading {
   display: flex; align-items: center; justify-content: center;
@@ -168,9 +208,9 @@ tbody td .badge {
       <option value="MEIA">Meia</option>
     </select>
     <label style="margin-left:4px">Período</label>
-    <select id="filter-periodo" multiple onchange="recarregarComPeriodo()" title="Segure Ctrl para selecionar múltiplos meses">
-      <option value="">Todos</option>
-    </select>
+    <div class="period-pills" id="period-pills">
+      <button class="pill active" data-value="" id="pill-todos">Todos</button>
+    </div>
     <span class="spacer"></span>
     <button class="btn-export btn-export-excel" onclick="exportarExcel()">Exportar Excel</button>
     <button class="btn-export btn-export-pdf" onclick="exportarPDF()">Exportar PDF</button>
@@ -242,9 +282,9 @@ function criarKPI(l, v, c='') {
 }
 
 function getPeriodoParam() {
-  const sel = document.getElementById('filter-periodo');
-  if (!sel) return '';
-  return Array.from(sel.selectedOptions).map(o => o.value).filter(v => v !== '').join(',');
+  const pills = document.querySelectorAll('#period-pills .pill.active');
+  const vals = Array.from(pills).map(b => b.getAttribute('data-value')).filter(v => v !== '');
+  return vals.join(',');
 }
 
 function carregarResumo(periodo) {
@@ -258,13 +298,19 @@ function carregarResumo(periodo) {
     .then(data => {
       const t = data.totais;
 
-      // Popular dropdown de períodos (apenas na primeira carga)
-      const selPer = document.getElementById('filter-periodo');
-      if (selPer && t.periodos_disponiveis && selPer.options.length <= 1) {
-        t.periodos_disponiveis.forEach(p => {
-          const o = document.createElement('option');
-          o.value = p; o.textContent = p;
-          selPer.appendChild(o);
+      // Popular pills de períodos (apenas na primeira carga)
+      const pillsContainer = document.getElementById('period-pills');
+      if (pillsContainer && t.periodos_disponiveis && t.periodos_disponiveis.length > 0) {
+        const existentes = pillsContainer.querySelectorAll('.pill[data-value]');
+        const existVals = Array.from(existentes).map(b => b.getAttribute('data-value'));
+        const precisaAdd = t.periodos_disponiveis.filter(p => !existVals.includes(p));
+        precisaAdd.forEach(p => {
+          const btn = document.createElement('button');
+          btn.className = 'pill';
+          btn.setAttribute('data-value', p);
+          btn.textContent = p;
+          btn.addEventListener('click', function(){ togglePeriodo(this); });
+          pillsContainer.appendChild(btn);
         });
       }
 
@@ -319,6 +365,32 @@ function carregarFuncionarios(periodo) {
         'Ocorreu um erro ao processar as planilhas.<br>' +
         '<span style="font-size:12px;font-weight:normal;color:var(--text2);display:block;margin-top:10px;">' + err.message + '</span></div>';
     });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const todosBtn = document.getElementById('pill-todos');
+  if (todosBtn) todosBtn.addEventListener('click', function(){ togglePeriodo(this); });
+});
+
+function togglePeriodo(btn) {
+  const isTodos = btn.getAttribute('data-value') === '';
+  if (isTodos) {
+    // "Todos": ativa apenas este, desativa todos os outros
+    document.querySelectorAll('#period-pills .pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  } else {
+    // Toggle individual
+    btn.classList.toggle('active');
+    // Se algum periodo individual estiver ativo, desativa "Todos"
+    const ativos = document.querySelectorAll('#period-pills .pill.active');
+    const temIndividual = Array.from(ativos).some(b => b.getAttribute('data-value') !== '');
+    const todosBtn = document.querySelector('#period-pills .pill[data-value=""]');
+    if (todosBtn) {
+      if (temIndividual) todosBtn.classList.remove('active');
+      else todosBtn.classList.add('active');
+    }
+  }
+  recarregarComPeriodo();
 }
 
 function recarregarComPeriodo() {
